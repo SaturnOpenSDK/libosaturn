@@ -9,7 +9,6 @@
 #define _MOUNT_H_
 
 #include <sys/queue.h>
-
-#include "vnode.h"
+#include <sys/vnode.h>
 
 #endif /* !_MOUNT_H_ */

@@ -8,8 +8,8 @@
 #ifndef _PATHNAME_NAME_H_
 #define _PATHNAME_NAME_H_
 
-#include "vnode.h"
-#include "component_name.h"
+#include <sys/vnode.h>
+#include <sys/component_name.h>
 
 void pathname_cache_init(void);
 int pathname_cache_enter(const struct component_name *, struct vnode *);

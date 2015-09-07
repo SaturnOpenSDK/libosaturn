@@ -5,9 +5,9 @@
  * Israel Jacquez <mrkotfw@gmail.com>
  */
 
-#include "hash.h"
-#include "component_name.h"
-#include "vnode.h"
+#include <sys/component_name.h>
+#include <sys/hash.h>
+#include <sys/vnode.h>
 
 #include <lib/memb.h>
 
@@ -51,20 +51,24 @@ pathname_cache_enter(const struct component_name *cnp, struct vnode *vnp)
         struct pathname_cache_entry *entry;
 
         /* Sanitize arguments */
-        if ((cnp == NULL) || (vnp == NULL))
+        if ((cnp == NULL) || (vnp == NULL)) {
                 return -1;
+        }
         if ((vnp->vn_type == VNODE_OBJ_NONE) ||
-            (vnp->vn_type == VNODE_OBJ_BAD))
+            (vnp->vn_type == VNODE_OBJ_BAD)) {
                 return -1;
-        /* Check component name */
+        }
 
-        if ((entry = memb_alloc(&pathname_cache_mb)) == NULL)
+        /* Check component name */
+        if ((entry = memb_alloc(&pathname_cache_mb)) == NULL) {
                 return -1;
+        }
 
         /* Check if the entry allocated from the block pool has a
          * reference count of zero. */
-        if (entry->pce_refcnt > 0)
+        if (entry->pce_refcnt > 0) {
                 return -1;
+        }
 
         entry->pce_cnp = cnp;
         entry->pce_vnp = vnp;

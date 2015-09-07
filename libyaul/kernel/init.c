@@ -5,7 +5,9 @@
  * Israel Jacquez <mrkotfw@gmail.com>
  */
 
-#include "mm/slob.h"
+void fd_init(void);
+void mm_init(void);
+void vfs_init(void);
 
 /**
  * Initialize the kernel.
@@ -13,5 +15,7 @@
 void
 init(void)
 {
-        slob_init();
+        mm_init();
+        fd_init();
+        vfs_init();
 }

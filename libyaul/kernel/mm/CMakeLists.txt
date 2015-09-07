@@ -1,6 +1,7 @@
 SET(kernel_mm_SRC
   free.c
   free_r.c
+  init.c
   malloc.c
   malloc_r.c
   realloc.c
