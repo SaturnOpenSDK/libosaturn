@@ -5,32 +5,41 @@
  * Israel Jacquez <mrkotfw@gmail.com>
  */
 
+#include <stdlib.h>
+
 #include <sys/fd.h>
 #include <sys/file.h>
 
-#include <lib/memb.h>
+static struct {
+        uint32_t fdt_allocated; /* Number of file descriptors allocated */
+        int32_t fdt_next; /* Next available file descriptor */
 
-/* There is only one process */
-struct file_descriptor_entry {
-        int32_t fde_id;
-        const struct file *fde_file;
+        struct {
+                bool fdte_used;
+                struct file fdte_file;
+        } fdt_entries[FD_COUNT_MAX];
+} file_descriptor_table = {
+        .fdt_allocated = 0,
+        .fdt_next = -1,
+        .fdt_entries = {
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false,
+                .fdte_used = false
+        }
 };
-
-MEMB(file_descriptors, struct file_descriptor_entry, FD_MAX, 0);
-
-/* File descriptor ID counter */
-static uint32_t fd_unique = 0;
-
-/*
- * Initialize file descriptor component.
- */
-void
-fd_init(void)
-{
-        fd_unique = 0;
-
-        memb_init(&file_descriptors);
-}
 
 /*
  * Allocate a file descriptor.
@@ -42,41 +51,31 @@ fd_init(void)
  *   - The pointer to file structure is invalid (EFAULT); or
  *   - The pointer to file structure has not been properly initialized
  */
-void *
-fd_alloc(const struct file *file)
+uint32_t
+fd_alloc(void)
 {
-        /* Sanitize arguments */
-        if (file == NULL) {
-                /* XXX: errno = */
-                return NULL;
-        }
-
-        /* Ensure all the file descriptor generic operations are
-         * valid */
-        if ((file->f_ops.fo_read == NULL) ||
-            (file->f_ops.fo_poll == NULL) ||
-            (file->f_ops.fo_close == NULL)) {
-                return -1;
-        }
-        /* File offset in a new file descriptor must start at the 0th byte */
-        if (file->f_offset != 0) {
-                return -1;
-        }
-
-        struct file_descriptor_entry *fde;
-        if ((fde = (struct file_descriptor_entry *)memb_alloc(
-                        &file_descriptors)) == NULL) {
-                /* There are no more file descriptors left */
-                /* XXX: errno = EMFILE */
-                return NULL;
-        }
-
-        fde->fde_id = ++fd_unique;
-        fde->fde_file = file;
-
         /* XXX: errno = */
 
-        return fde;
+        if (file_descriptor_table.fdt_allocated == FD_COUNT_MAX) {
+                /* There are no more file descriptors left */
+                /* XXX: errno = EMFILE */
+                return -1;
+        }
+
+        uint32_t fd;
+        fd = file_descriptor_table.fdt_next;
+        if (fd < 0) {
+                for (fd = 0; fd < FD_COUNT_MAX; fd++) {
+                        if (!file_descriptor_table.fdt_entries[fd].ftde_used) {
+                                break;
+                        }
+                }
+        }
+
+        file_descriptor_table.fdt_entries[fd].ftde_used = true;
+        file_descriptor_table.fdt_allocated++;
+
+        return fd;
 }
 
 /*
@@ -85,36 +84,55 @@ fd_alloc(const struct file *file)
  * If successful, 0 is returned. Otherwise a -1 is returned for the
  * following cases:
  *
- *   - Bad file descriptor (EBADF);
- *   - File descriptor is in a bad state (EBADFD); or
- *   - Unable to free file descriptor (address not within bounds of the
- *     block pool).
+ *   - Bad file descriptor (EBADF); or
+ *   - File descriptor is in a bad state (EBADFD)
  */
-int
-fd_free(const void *addr)
+int32_t
+fd_free(int32_t fd)
 {
-        if (addr == NULL) {
+        /* XXX: errno */
+
+        if ((fd < 0) && (fd >= FD_COUNT_MAX)) {
                 /* XXX: errno = EBADF */
                 return -1;
         }
 
-        struct file_descriptor_entry *fde;
-        fde = (struct file_descriptor_entry *)addr;
-
-        if ((fde->fde_id < 0) && (fde->fde_id > fd_unique)) {
-                /* XXX: errno = EBADF */
-                return -1;
-        }
-
-        fde->fde_id = -1;
-        fde->fde_file = NULL;
-
-        if ((memb_free(&file_descriptors, fde)) < 0) {
+        if (!file_descriptor_table.fdt_entries[fd].ftde_used) {
                 /* XXX: errno = */
                 return -1;
         }
 
-        /* XXX: errno = */
+        file_descriptor_table.fdt_next = fd;
+
+        file_descriptor_table.fdt_entries[fd].ftde_used = false;
+        file_descriptor_table.fdt_allocated--;
 
         return 0;
+}
+
+/*
+ * Retrieve file structure from file descriptor.
+ *
+ * If successful, a pointer to file structure is returned. Otherwise
+ * NULL is returned for the following cases:
+ *
+ *   - Bad file descriptor (EBADF); or
+ *   - File descriptor is in a bad state (EBADFD)
+ */
+struct file *
+fd_file(int32_t fd)
+{
+        /* XXX: errno */
+
+        if ((fd < 0) && (fd >= FD_COUNT_MAX)) {
+                /* XXX: errno = EBADF */
+                return NULL;
+        }
+
+        if (!file_descriptor_table.fdt_entries[fd].ftde_used) {
+                /* XXX: errno = */
+                return NULL;
+        }
+
+        return &file_descriptor_table.fdt_entries[fd].ftde_file;
 }
